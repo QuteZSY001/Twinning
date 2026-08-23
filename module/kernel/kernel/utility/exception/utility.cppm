@@ -193,7 +193,7 @@ export namespace Twinning::Kernel {
 		) :
 			Exception{"StandardSystemException", {}, location} {
 			thiz.m_description.emplace_back(std::format("type: {}", LowLevel::Compiler::parse_mangled_name(std::string_view{typeid(exception).name()})));
-			thiz.m_description.emplace_back(std::format("message: {}", LowLevel::SystemNativeString::utf8_from_native(exception.code().message())));
+			thiz.m_description.emplace_back(std::format("message: {}", LowLevel::SystemNativeString::from_narrow(exception.code().message())));
 			return;
 		}
 
@@ -212,7 +212,7 @@ export namespace Twinning::Kernel {
 			auto path_1 = exception.path1().generic_u8string();
 			auto path_2 = exception.path2().generic_u8string();
 			thiz.m_description.emplace_back(std::format("type: {}", LowLevel::Compiler::parse_mangled_name(std::string_view{typeid(exception).name()})));
-			thiz.m_description.emplace_back(std::format("message: {}", LowLevel::SystemNativeString::utf8_from_native(exception.code().message())));
+			thiz.m_description.emplace_back(std::format("message: {}", LowLevel::SystemNativeString::from_narrow(exception.code().message())));
 			thiz.m_description.emplace_back(std::format("path_1: {}", reinterpret_cast<std::string &>(path_1)));
 			thiz.m_description.emplace_back(std::format("path_2: {}", reinterpret_cast<std::string &>(path_2)));
 			return;

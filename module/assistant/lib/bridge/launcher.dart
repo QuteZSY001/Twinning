@@ -38,7 +38,7 @@ class Launcher {
       ) {
         var state = lib.calloc<lib.Bool>();
         state.value = false;
-        var exceptionProxy = MessageProxy(null);
+        var exceptionProxy = MessageProxy();
         var argument = lib.calloc<Message>();
         var result = lib.calloc<Message>();
         var exception = lib.calloc<Message>();
@@ -67,9 +67,9 @@ class Launcher {
       var result = null as List<String>?;
       var exception = null as ({Object exception, StackTrace stack})?;
       try {
-        var executorCallback = ExecutorProxy(callbackProxy);
-        var executorArgument = MessageProxy(['execute', script, ...argument]);
-        var executorResult = MessageProxy(null);
+        var executorCallback = ExecutorProxy.of(callbackProxy);
+        var executorArgument = MessageProxy.of(['execute', script, ...argument]);
+        var executorResult = MessageProxy();
         ExecutorProxy.parse(service.executor).value(executorCallback, executorArgument, executorResult);
         result = executorResult.value;
       }
@@ -108,12 +108,12 @@ class Launcher {
           var callbackException = portMessage[3]!.as<lib.Pointer<Message>>();
           try {
             var callbackResultProxy = await client.handle(MessageProxy.parse(callbackArgument).value);
-            MessageProxy.construct(callbackResult, .new(callbackResultProxy));
-            MessageProxy.construct(callbackException, .new([]));
+            MessageProxy.construct(callbackResult, .of(callbackResultProxy));
+            MessageProxy.construct(callbackException, .new());
           }
           catch (e, s) {
-            MessageProxy.construct(callbackException, .new([ConvertHelper.generateExceptionMessage(e, s).join('\n')]));
-            MessageProxy.construct(callbackResult, .new([]));
+            MessageProxy.construct(callbackException, .of([ConvertHelper.generateExceptionMessage(e, s).join('\n')]));
+            MessageProxy.construct(callbackResult, .new());
           }
           callbackState.value = true;
         }

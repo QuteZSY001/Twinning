@@ -31,7 +31,6 @@ import twinning.kernel.utility.range.algorithm;
 import twinning.kernel.utility.miscellaneous.finalizer;
 import twinning.kernel.utility.miscellaneous.system_native_string;
 import twinning.kernel.utility.miscellaneous.byte_series.container;
-import twinning.kernel.utility.storage.utility;
 import twinning.kernel.dependency.system.win32;
 import twinning.kernel.dependency.system.posix;
 
@@ -57,10 +56,10 @@ export namespace Twinning::Kernel::Process {
 		assert_test(state_d != 0);
 		assert_test(state_d == unmake_box<Dependency::system::win32::$DWORD>(buffer.capacity() - 1_sz));
 		buffer.set_size(buffer.capacity() - 1_sz);
-		target.parse(unsafe_cast<String>(SystemNativeString::wide_to_utf8(buffer)));
+		target.parse(SystemNativeString::from_native(buffer));
 		#endif
 		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-		auto buffer = BasicString<Character>{256_sz};
+		auto buffer = BasicString<CharacterN>{256_sz};
 		while (k_true) {
 			auto current_result = Dependency::system::posix::$getcwd(
 				unmake_pointer_unsafe<char>(buffer.begin()),
@@ -73,7 +72,7 @@ export namespace Twinning::Kernel::Process {
 			buffer.expand(buffer.capacity());
 		}
 		buffer.set_size(null_terminated_string_size_of(buffer.begin()));
-		target.parse(unsafe_cast<String>(buffer));
+		target.parse(SystemNativeString::from_native(buffer));
 		#endif
 		return target;
 	}
@@ -94,15 +93,15 @@ export namespace Twinning::Kernel::Process {
 		for (auto element_raw = string_raw; *element_raw != L'\0'; ++element_raw) {
 			auto element_pointer = make_pointer_unsafe<CharacterW>(element_raw);
 			auto element_view = ConstantBasicStringView<CharacterW>{element_pointer, null_terminated_string_size_of(element_pointer)};
-			result_list.append(unsafe_cast<String>(SystemNativeString::wide_to_utf8(element_view)));
+			result_list.append(SystemNativeString::from_native(element_view));
 			element_raw += unmake_box<std::size_t>(element_view.size());
 		}
 		#endif
 		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 		for (auto element_raw = Dependency::system::posix::$environ; *element_raw != nullptr; ++element_raw) {
-			auto element_pointer = make_pointer_unsafe<Character>(*element_raw);
-			auto element_view = ConstantBasicStringView<Character>{element_pointer, null_terminated_string_size_of(element_pointer)};
-			result_list.append(element_view);
+			auto element_pointer = make_pointer_unsafe<CharacterN>(*element_raw);
+			auto element_view = ConstantBasicStringView<CharacterN>{element_pointer, null_terminated_string_size_of(element_pointer)};
+			result_list.append(SystemNativeString::from_native(element_view));
 		}
 		#endif
 		auto result = Map<String, String>{};
@@ -204,14 +203,14 @@ export namespace Twinning::Kernel::Process {
 		assert_test(state_b != Dependency::system::win32::$FALSE);
 		auto process_information = Dependency::system::win32::$PROCESS_INFORMATION{};
 		state_b = Dependency::system::win32::$CreateProcessW(
-			M_use_ntsp_w_safe_of(program.emit_native()),
-			M_use_ntsp_w_safe_of(command),
+			unmake_pointer_unsafe<wchar_t>(SystemNativeString::to_native(program.emit_native(), true).begin()),
+			unmake_pointer_unsafe<wchar_t>(SystemNativeString::to_native(command, true).begin()),
 			nullptr,
 			nullptr,
 			Dependency::system::win32::$TRUE,
 			Dependency::system::win32::$CREATE_UNICODE_ENVIRONMENT | Dependency::system::win32::$CREATE_NO_WINDOW | Dependency::system::win32::$EXTENDED_STARTUPINFO_PRESENT,
-			M_use_ntsp_w_of(environment_string),
-			M_use_ntsp_w_safe_of(workspace.emit_native()),
+			unmake_pointer_unsafe<wchar_t>(SystemNativeString::to_native(environment_string, false).begin()),
+			unmake_pointer_unsafe<wchar_t>(SystemNativeString::to_native(workspace.emit_native(), true).begin()),
 			reinterpret_cast<Dependency::system::win32::$STARTUPINFOW *>(&startup_information),
 			&process_information
 		);
@@ -245,11 +244,11 @@ export namespace Twinning::Kernel::Process {
 		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 		assert_test(!argument.empty());
 		auto state_i = int{};
-		auto program_string = M_use_nts_n_safe_of(program.emit_native());
-		auto argument_string = List<String>{};
+		auto program_string = SystemNativeString::to_native(program.emit_native(), true);
+		auto argument_string = List<BasicString<CharacterN>>{};
 		argument_string.allocate(argument.size());
 		for (auto & element : argument) {
-			argument_string.append(M_use_nts_n_safe_of(element));
+			argument_string.append(SystemNativeString::to_native(element, true));
 		}
 		auto argument_string_list = List<char *>{};
 		argument_string_list.allocate(argument_string.size() + 1_sz);
@@ -257,10 +256,10 @@ export namespace Twinning::Kernel::Process {
 			argument_string_list.append(unmake_pointer_unsafe<char>(element.begin()));
 		}
 		argument_string_list.append(nullptr);
-		auto environment_string = List<String>{};
+		auto environment_string = List<BasicString<CharacterN>>{};
 		environment_string.allocate(environment.size());
 		for (auto & element : environment) {
-			environment_string.append(M_use_nts_n_safe_of(element.key + "="_sv + element.value));
+			environment_string.append(SystemNativeString::to_native(element.key + "="_sv + element.value, true));
 		}
 		auto environment_string_list = List<char *>{};
 		environment_string_list.allocate(environment_string.size() + 1_sz);
@@ -268,7 +267,7 @@ export namespace Twinning::Kernel::Process {
 			environment_string_list.append(unmake_pointer_unsafe<char>(element.begin()));
 		}
 		environment_string_list.append(nullptr);
-		auto workspace_string = M_use_nts_n_safe_of(workspace.emit_native());
+		auto workspace_string = SystemNativeString::to_native(workspace.emit_native(), true);
 		auto process_identifier = Dependency::system::posix::$fork();
 		assert_test(process_identifier != -1);
 		if (process_identifier == 0) {
@@ -302,7 +301,7 @@ export namespace Twinning::Kernel::Process {
 			Dependency::system::posix::$P_PID,
 			static_cast<Dependency::system::posix::$id_t>(process_identifier),
 			&wait_information,
-			Dependency::system::posix::$WEXITED | Dependency::system::posix::$WSTOPPED
+			Dependency::system::posix::$WEXITED
 		);
 		assert_test(state_i == 0);
 		result = make_box<IntegerU32>(wait_information.si_status);

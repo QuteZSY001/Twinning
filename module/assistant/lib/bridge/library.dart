@@ -39,18 +39,17 @@ class Library {
     if (SystemChecker.isWindows) {
       pathString += '.';
     }
-    var handle = lib.DynamicLibrary.open(pathString);
-    var symbol = null as lib.Pointer<Service>?;
+    this._handle = lib.DynamicLibrary.open(pathString);
     try {
-      symbol = handle.lookup<Service>('_ZN8Twinning6Kernel9Interface7serviceE');
+      this._symbol = this._handle!.lookup<Service>('_ZN8Twinning6Kernel9Interface7serviceE');
+      this._symbol!.ref.initialize.asFunction<Void Function()>()();
     }
     catch (e) {
-      handle.close();
+      this._symbol = null;
+      this._handle!.close();
+      this._handle = null;
       rethrow;
     }
-    this._handle = handle;
-    this._symbol = symbol;
-    this._symbol!.ref.initialize.asFunction<Void Function()>()();
     return;
   }
 

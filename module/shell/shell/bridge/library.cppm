@@ -24,9 +24,8 @@ export namespace Twinning::Shell::Bridge {
 
 		~Library(
 		) {
-			thiz.m_symbol->finalize();
-			if (thiz.m_handle.state()) {
-				thiz.m_handle.close();
+			if (thiz.state()) {
+				thiz.close();
 			}
 			return;
 		}
@@ -34,7 +33,7 @@ export namespace Twinning::Shell::Bridge {
 		// ----------------
 
 		Library(
-		) = delete;
+		) = default;
 
 		Library(
 			Library const & that
@@ -43,29 +42,6 @@ export namespace Twinning::Shell::Bridge {
 		Library(
 			Library && that
 		) = delete;
-
-		// ----------------
-
-		explicit Library(
-			std::string_view const & path
-		) :
-			m_handle{},
-			m_symbol{} {
-			thiz.m_handle.open(path);
-			thiz.m_symbol = thiz.m_handle.lookup<Service>("_ZN8Twinning6Kernel9Interface7serviceE");
-			thiz.m_symbol->initialize();
-			return;
-		}
-
-		explicit Library(
-			Service * const & symbol
-		) :
-			m_handle{},
-			m_symbol{} {
-			thiz.m_symbol = symbol;
-			thiz.m_symbol->initialize();
-			return;
-		}
 
 		#pragma endregion
 
@@ -83,8 +59,62 @@ export namespace Twinning::Shell::Bridge {
 
 		#pragma region access
 
+		auto state(
+		) -> bool {
+			return thiz.m_symbol != nullptr;
+		}
+
+		// ----------------
+
+		auto imbue(
+			Service * const & symbol
+		) -> void {
+			assert_test(!thiz.state());
+			assert_test(symbol != nullptr);
+			try {
+				thiz.m_symbol = symbol;
+				thiz.m_symbol->initialize();
+			}
+			catch (...) {
+				thiz.m_symbol = nullptr;
+				throw;
+			}
+			return;
+		}
+
+		auto open(
+			std::string_view const & path
+		) -> void {
+			assert_test(!thiz.state());
+			thiz.m_handle.open(path);
+			try {
+				thiz.m_symbol = thiz.m_handle.lookup<Service>("_ZN8Twinning6Kernel9Interface7serviceE");
+				thiz.m_symbol->initialize();
+			}
+			catch (...) {
+				thiz.m_symbol = nullptr;
+				thiz.m_handle.close();
+				throw;
+			}
+			return;
+		}
+
+		auto close(
+		) -> void {
+			assert_test(thiz.state());
+			thiz.m_symbol->finalize();
+			thiz.m_symbol = nullptr;
+			if (thiz.m_handle.state()) {
+				thiz.m_handle.close();
+			}
+			return;
+		}
+
+		// ----------------
+
 		auto symbol(
 		) -> Service & {
+			assert_test(thiz.state());
 			return *thiz.m_symbol;
 		}
 

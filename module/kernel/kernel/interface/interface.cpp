@@ -41,8 +41,10 @@ namespace Twinning::Kernel::Interface {
 	) -> Void {
 		auto & argument = argument_proxy.value;
 		auto & result = result_proxy.value;
+		assert_test(argument.size() >= 1_sz);
 		switch (argument[1_ix].hash().value) {
 			case "execute"_shz: {
+				assert_test(argument.size() >= 2_sz);
 				auto & detail_script = argument[2_ix];
 				auto   detail_argument = List<String>{argument.tail(argument.size() - 3_ix)};
 				auto   detail = service_executor_execute(
@@ -74,13 +76,16 @@ namespace Twinning::Kernel::Interface {
 	extern "C++" Service service = Service{
 		.executor = nullptr,
 		.initialize = []() {
+			assert_test(service.executor == nullptr);
 			service.executor = new Executor{};
-			ExecutorProxy::construct(*service.executor, ExecutorProxy{&service_executor});
+			ExecutorProxy::construct(*service.executor, ExecutorProxy{Function<Void, ExecutorProxy const &, MessageProxy const &, MessageProxy &>{&service_executor}});
 			return;
 		},
 		.finalize = []() {
+			assert_test(service.executor != nullptr);
 			ExecutorProxy::destruct(*service.executor);
 			delete service.executor;
+			service.executor = nullptr;
 			return;
 		},
 	};

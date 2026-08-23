@@ -11,6 +11,7 @@ import twinning.kernel.utility.storage.path;
 import twinning.kernel.utility.miscellaneous.finalizer;
 import twinning.kernel.utility.miscellaneous.byte_series.container;
 import twinning.kernel.utility.string.character_type;
+import twinning.kernel.utility.string.basic_string_view;
 import twinning.kernel.utility.string.basic_string;
 import twinning.kernel.utility.string.string;
 import twinning.kernel.utility.container.optional.optional;
@@ -56,7 +57,7 @@ export namespace Twinning::Kernel::Storage {
 			Path const & value
 		) -> std::filesystem::path {
 			auto value_string = value.emit_native();
-			M_use_nts_safe(value_string);
+			assert_test(is_safe_null_terminated_string(value_string));
 			return std::filesystem::path{unsafe_cast<std::u8string_view>(make_std_string_view(value_string))};
 		}
 
@@ -128,7 +129,7 @@ export namespace Twinning::Kernel::Storage {
 			assert_test(mode_read || mode_write);
 			#if defined M_system_windows
 			auto native_handle = Dependency::system::win32::$CreateFileW(
-				M_use_ntsp_w_safe_of(path.emit_native()),
+				unmake_pointer_unsafe<wchar_t>(SystemNativeString::to_native(path.emit_native(), true).begin()),
 				(!mode_read ? 0 : Dependency::system::win32::$GENERIC_READ) | (!mode_write ? 0 : Dependency::system::win32::$GENERIC_WRITE),
 				Dependency::system::win32::$FILE_SHARE_READ | Dependency::system::win32::$FILE_SHARE_WRITE | Dependency::system::win32::$FILE_SHARE_DELETE,
 				nullptr,
@@ -161,7 +162,7 @@ export namespace Twinning::Kernel::Storage {
 				flag |= Dependency::system::posix::$O_CREAT | Dependency::system::posix::$O_EXCL;
 			}
 			auto native_handle = Dependency::system::posix::$open(
-				M_use_ntsp_n_safe_of(path.emit_native()),
+				unmake_pointer_unsafe<char>(SystemNativeString::to_native(path.emit_native(), true).begin()),
 				flag,
 				0644
 			);
@@ -267,7 +268,7 @@ export namespace Twinning::Kernel::Storage {
 			auto state_b = Dependency::system::win32::$BOOL{};
 			auto current_position = 0_sz;
 			while (current_position != data.size()) {
-				auto current_count = Math::minimum(0x80000000_sz, data.size() - current_position);
+				auto current_count = Math::minimum(0x40000000_sz, data.size() - current_position);
 				auto current_count_actual = Dependency::system::win32::$DWORD{};
 				state_b = Dependency::system::win32::$ReadFile(
 					static_cast<Dependency::system::win32::$HANDLE>(handle.value),
@@ -284,7 +285,7 @@ export namespace Twinning::Kernel::Storage {
 			#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 			auto current_position = 0_sz;
 			while (current_position != data.size()) {
-				auto current_count = Math::minimum(0x80000000_sz, data.size() - current_position);
+				auto current_count = Math::minimum(0x40000000_sz, data.size() - current_position);
 				auto current_count_actual = Dependency::system::posix::$read(
 					static_cast<int>(reinterpret_cast<std::intptr_t>(handle.value)),
 					unmake_pointer_unsafe<void>(data.begin() + current_position),
@@ -306,7 +307,7 @@ export namespace Twinning::Kernel::Storage {
 			auto state_b = Dependency::system::win32::$BOOL{};
 			auto current_position = 0_sz;
 			while (current_position != data.size()) {
-				auto current_count = Math::minimum(0x80000000_sz, data.size() - current_position);
+				auto current_count = Math::minimum(0x40000000_sz, data.size() - current_position);
 				auto current_count_actual = Dependency::system::win32::$DWORD{};
 				state_b = Dependency::system::win32::$WriteFile(
 					static_cast<Dependency::system::win32::$HANDLE>(handle.value),
@@ -323,7 +324,7 @@ export namespace Twinning::Kernel::Storage {
 			#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 			auto current_position = 0_sz;
 			while (current_position != data.size()) {
-				auto current_count = Math::minimum(0x80000000_sz, data.size() - current_position);
+				auto current_count = Math::minimum(0x40000000_sz, data.size() - current_position);
 				auto current_count_actual = Dependency::system::posix::$write(
 					static_cast<int>(reinterpret_cast<std::intptr_t>(handle.value)),
 					unmake_pointer_unsafe<void>(data.begin() + current_position),
@@ -377,7 +378,9 @@ export namespace Twinning::Kernel::Storage {
 			auto referent = resolve_link(target);
 			auto is_directory = Boolean{};
 			#if defined M_system_windows
-			auto attribute = Dependency::system::win32::$GetFileAttributesW(M_use_ntsp_w_safe_of(target.emit_native()));
+			auto attribute = Dependency::system::win32::$GetFileAttributesW(
+				unmake_pointer_unsafe<wchar_t>(SystemNativeString::to_native(target.emit_native(), true).begin())
+			);
 			is_directory = attribute != Dependency::system::win32::$INVALID_FILE_ATTRIBUTES && (attribute & Dependency::system::win32::$FILE_ATTRIBUTE_DIRECTORY) != 0;
 			#endif
 			#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone

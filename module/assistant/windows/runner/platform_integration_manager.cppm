@@ -74,7 +74,7 @@ export {
 		#pragma region constructor
 
 		explicit PlatformIntegrationManager(
-			std::nullptr_t _
+			std::nullptr_t placeholder
 		) :
 			m_channel{},
 			m_window{},
@@ -105,12 +105,11 @@ export {
 		template <typename TFinalizer>
 		static constexpr auto make_finalizer(
 			TFinalizer const & finalizer
-		) -> auto {
-			auto finalizer_wrapper = [&](auto it) {
+		) -> std::unique_ptr<TFinalizer, void (*)(std::add_pointer_t<TFinalizer>)> {
+			return std::unique_ptr<TFinalizer, void (*)(std::add_pointer_t<TFinalizer>)>{new TFinalizer{finalizer}, [](std::add_pointer_t<TFinalizer> it) -> void {
+				(*it)();
 				delete it;
-				finalizer();
-			};
-			return std::unique_ptr<std::uint8_t, decltype(finalizer_wrapper)>{new std::uint8_t{}, std::move(finalizer_wrapper)};
+			}};
 		}
 
 		#pragma endregion

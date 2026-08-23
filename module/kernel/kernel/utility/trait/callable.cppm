@@ -50,9 +50,9 @@ export namespace Twinning::Kernel::Trait {
 		CategoryConstraint<IsAnything<TResult> && IsValid<TArgument ...>>
 	struct GlobalFunctionTrait {
 
-		using Argument = TypePackage<TArgument ...>;
-
 		using Result = TResult;
+
+		using Argument = TypePackage<TArgument ...>;
 
 	};
 
@@ -67,9 +67,9 @@ export namespace Twinning::Kernel::Trait {
 
 		// ----------------
 
-		using Argument = TypePackage<TArgument ...>;
-
 		using Result = TResult;
+
+		using Argument = TypePackage<TArgument ...>;
 
 	};
 
@@ -84,9 +84,9 @@ export namespace Twinning::Kernel::Trait {
 
 		// ----------------
 
-		using Argument = CallableTrait<decltype(&TClass::operator ())>::Argument;
-
 		using Result = CallableTrait<decltype(&TClass::operator ())>::Result;
+
+		using Argument = CallableTrait<decltype(&TClass::operator ())>::Argument;
 
 	};
 

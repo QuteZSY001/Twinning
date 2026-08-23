@@ -11,7 +11,7 @@ export namespace Twinning::Shell::Bridge {
 
 	struct Service {
 
-		Executor * executor{nullptr};
+		std::add_pointer_t<Executor> executor{nullptr};
 
 		std::add_pointer_t<void ()> initialize{nullptr};
 

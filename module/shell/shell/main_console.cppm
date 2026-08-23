@@ -253,10 +253,10 @@ export namespace Twinning::Shell {
 				args.reserve(static_cast<std::size_t>(argc));
 				for (auto & arg : std::span{argv, static_cast<std::size_t>(argc)}) {
 					#if defined M_system_windows
-					args.emplace_back(SystemNativeString::wide_to_utf8(std::wstring_view{static_cast<wchar_t const *>(arg)}));
+					args.emplace_back(SystemNativeString::from_native(static_cast<wchar_t const *>(arg)));
 					#endif
 					#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-					args.emplace_back(static_cast<char const *>(arg));
+					args.emplace_back(SystemNativeString::from_native(static_cast<char const *>(arg)));
 					#endif
 				}
 				assert_test(args.size() >= 3);
@@ -289,7 +289,13 @@ export namespace Twinning::Shell {
 			auto exception = std::optional<std::string>{};
 			try {
 				auto client = MainConsoleBridgeClient{};
-				auto library = kernel_library_symbol != nullptr ? Bridge::Library{kernel_library_symbol} : Bridge::Library{kernel};
+				auto library = Bridge::Library{};
+				if (kernel_library_symbol != nullptr) {
+					library.imbue(kernel_library_symbol);
+				}
+				else {
+					library.open(kernel);
+				}
 				result.emplace(Bridge::Launcher::launch(client, library, script, argument));
 			}
 			catch (...) {

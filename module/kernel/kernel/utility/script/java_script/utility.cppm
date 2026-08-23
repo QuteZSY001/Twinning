@@ -243,7 +243,7 @@ export namespace Twinning::Kernel::Script::JavaScript {
 				return t_function(as_forward<TArgument>(argument.value()) ...);
 			}
 			else if constexpr (IsInstance<Result>) {
-				return NativeValueHandler<Result>::new_instance_allocate(t_function(as_forward<TArgument>(argument.value()) ...));
+				return NativeValueHandler<AsPure<Result>>::new_instance_allocate(t_function(as_forward<TArgument>(argument.value()) ...));
 			}
 			else {
 				return NativeValueHandler<AsPure<Result>>::new_reference(t_function(as_forward<TArgument>(argument.value()) ...));

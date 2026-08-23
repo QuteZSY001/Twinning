@@ -25,7 +25,7 @@ export namespace Twinning::Shell::Interaction {
 		if (is_output) {
 			native_handle = Dependency::system::win32::$GetStdHandle(Dependency::system::win32::$STD_OUTPUT_HANDLE);
 		}
-		assert_test(native_handle != Dependency::system::win32::$INVALID_HANDLE_VALUE);
+		assert_test(native_handle != Dependency::system::win32::$INVALID_HANDLE_VALUE && native_handle != nullptr);
 		handle = reinterpret_cast<std::intptr_t>(native_handle);
 		#endif
 		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
@@ -101,6 +101,7 @@ export namespace Twinning::Shell::Interaction {
 		std::intptr_t const & handle,
 		std::string const &   text
 	) -> void {
+		assert_test(text.size() <= 0x40000000);
 		#if defined M_system_windows
 		auto state_b = Dependency::system::win32::$BOOL{};
 		auto native_handle = reinterpret_cast<Dependency::system::win32::$HANDLE>(handle);
@@ -149,7 +150,7 @@ export namespace Twinning::Shell::Interaction {
 			nullptr
 		);
 		assert_test(state_b != Dependency::system::win32::$FALSE);
-		text = SystemNativeString::wide_to_utf8(std::wstring_view{data.data(), data_size});
+		text = SystemNativeString::from_native(std::wstring_view{data.data(), data_size});
 		#endif
 		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 		read_file(handle, text);
@@ -161,10 +162,11 @@ export namespace Twinning::Shell::Interaction {
 		std::intptr_t const & handle,
 		std::string const &   text
 	) -> void {
+		assert_test(text.size() <= 0x40000000);
 		#if defined M_system_windows
 		auto state_b = Dependency::system::win32::$BOOL{};
 		auto native_handle = reinterpret_cast<Dependency::system::win32::$HANDLE>(handle);
-		auto data = SystemNativeString::wide_from_utf8(text);
+		auto data = SystemNativeString::to_native(text, false);
 		auto data_size = Dependency::system::win32::$DWORD{};
 		state_b = Dependency::system::win32::$WriteConsoleW(
 			native_handle,

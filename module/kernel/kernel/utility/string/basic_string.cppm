@@ -288,32 +288,6 @@ export namespace Twinning::Kernel {
 
 	#pragma region utility
 
-	template <typename TSource> requires
-		CategoryConstraint<IsPureInstance<TSource>>
-		&& (IsConvertible<TSource, BasicStringView<typename TSource::Element, k_true> const &>)
-	inline auto make_null_terminated_string(
-		TSource const & source
-	) -> BasicString<typename TSource::Element> {
-		auto result = BasicString<typename TSource::Element>{source.size() + 1_sz};
-		result.expand_size_to_full();
-		Range::assign_from(result.head(source.size()), source);
-		result.last() = make_box<typename TSource::Element>('\0');
-		result.shrink_size(1_sz);
-		return result;
-	}
-
-	template <typename TSource> requires
-		CategoryConstraint<IsPureInstance<TSource>>
-		&& (IsConvertible<TSource, BasicStringView<typename TSource::Element, k_true> const &>)
-	inline auto ensure_safe_null_terminated_string(
-		TSource const & source
-	) -> TSource const & {
-		assert_test(!Range::has(source, make_box<typename TSource::Element>('\0')));
-		return source;
-	}
-
-	// ----------------
-
 	template <typename TResult, typename TSource, typename TSeparator> requires
 		CategoryConstraint<IsPureInstance<TResult> && IsPureInstance<TSource> && IsPureInstance<TSeparator>>
 		&& (IsTemplateInstanceOfTt<TResult, BasicString>)

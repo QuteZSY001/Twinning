@@ -10,144 +10,251 @@ import twinning.kernel.utility.exception.utility;
 import twinning.kernel.utility.string.basic_string_view;
 import twinning.kernel.utility.string.basic_string;
 import twinning.kernel.utility.string.basic_static_string;
+import twinning.kernel.utility.string.string;
+import twinning.kernel.utility.range.algorithm;
 import twinning.kernel.dependency.system.win32;
 import twinning.kernel.dependency.system.posix;
 
 export namespace Twinning::Kernel::SystemNativeString {
 
-	#pragma region windows
+	#pragma region generic
+
+	inline auto to_generic(
+		ConstantBasicStringView<Character> const & generic,
+		bool const &                               safe_null_terminated
+	) -> BasicString<Character> {
+		if (safe_null_terminated) {
+			assert_test(is_safe_null_terminated_string(generic));
+		}
+		auto result = BasicString<Character>{};
+		result.allocate(generic.size() + 1_sz);
+		result.set_size(generic.size());
+		Range::assign_from(result, generic);
+		return result;
+	}
+
+	inline auto from_generic(
+		ConstantBasicStringView<Character> const & generic
+	) -> BasicString<Character> {
+		return String{generic};
+	}
+
+	#pragma endregion
+
+	#pragma region native
 
 	#if defined M_system_windows
 
-	inline auto wide_to_utf8(
-		ConstantBasicStringView<CharacterW> const & source
-	) -> BasicString<CharacterN> {
-		auto destination = BasicString<CharacterN>{};
-		if (!source.empty()) {
-			auto destination_size = Size{};
-			destination_size = make_box<Size>(
+	inline auto to_wide(
+		ConstantBasicStringView<Character> const & generic,
+		bool const &                               safe_null_terminated
+	) -> BasicString<CharacterW> {
+		if (safe_null_terminated) {
+			assert_test(is_safe_null_terminated_string(generic));
+		}
+		auto wide = BasicString<CharacterW>{};
+		if (!generic.empty()) {
+			auto size = Size{};
+			size = make_box<Size>(
+				Dependency::system::win32::$MultiByteToWideChar(
+					Dependency::system::win32::$CP_UTF8,
+					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
+					unmake_pointer_unsafe<char>(generic.begin()),
+					unmake_box<int>(generic.size()),
+					nullptr,
+					0
+				)
+			);
+			assert_test(size != 0_sz);
+			wide.allocate(size + 1_sz);
+			wide.set_size(size);
+			size = make_box<Size>(
+				Dependency::system::win32::$MultiByteToWideChar(
+					Dependency::system::win32::$CP_UTF8,
+					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
+					unmake_pointer_unsafe<char>(generic.begin()),
+					unmake_box<int>(generic.size()),
+					unmake_pointer_unsafe<wchar_t>(wide.begin()),
+					unmake_box<int>(wide.size())
+				)
+			);
+			assert_test(size == wide.size());
+		}
+		return wide;
+	}
+
+	inline auto from_wide(
+		ConstantBasicStringView<CharacterW> const & wide
+	) -> BasicString<Character> {
+		auto generic = BasicString<Character>{};
+		if (!wide.empty()) {
+			auto size = Size{};
+			size = make_box<Size>(
 				Dependency::system::win32::$WideCharToMultiByte(
 					Dependency::system::win32::$CP_UTF8,
 					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
-					unmake_pointer_unsafe<Dependency::system::win32::$WCHAR>(source.begin()),
-					unmake_box<int>(source.size()),
+					unmake_pointer_unsafe<wchar_t>(wide.begin()),
+					unmake_box<int>(wide.size()),
 					nullptr,
 					0,
 					nullptr,
 					nullptr
 				)
 			);
-			assert_test(destination_size != 0_sz);
-			destination.allocate_full(destination_size);
-			destination_size = make_box<Size>(
+			assert_test(size != 0_sz);
+			generic.allocate(size);
+			generic.set_size(size);
+			size = make_box<Size>(
 				Dependency::system::win32::$WideCharToMultiByte(
 					Dependency::system::win32::$CP_UTF8,
 					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
-					unmake_pointer_unsafe<Dependency::system::win32::$WCHAR>(source.begin()),
-					unmake_box<int>(source.size()),
-					unmake_pointer_unsafe<ZCharacterN>(destination.begin()),
-					unmake_box<int>(destination.size()),
+					unmake_pointer_unsafe<wchar_t>(wide.begin()),
+					unmake_box<int>(wide.size()),
+					unmake_pointer_unsafe<char>(generic.begin()),
+					unmake_box<int>(generic.size()),
 					nullptr,
 					nullptr
 				)
 			);
-			assert_test(destination_size == destination.size());
+			assert_test(size == generic.size());
 		}
-		return destination;
+		return generic;
 	}
 
 	// ----------------
 
-	inline auto wide_from_utf8(
-		ConstantBasicStringView<CharacterN> const & source
-	) -> BasicString<CharacterW> {
-		auto destination = BasicString<CharacterW>{};
-		if (!source.empty()) {
-			auto destination_size = Size{};
-			destination_size = make_box<Size>(
-				Dependency::system::win32::$MultiByteToWideChar(
-					Dependency::system::win32::$CP_UTF8,
-					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					unmake_pointer_unsafe<Dependency::system::win32::$CHAR>(source.begin()),
-					unmake_box<int>(source.size()),
-					nullptr,
-					0
-				)
-			);
-			assert_test(destination_size != 0_sz);
-			destination.allocate_full(destination_size);
-			destination_size = make_box<Size>(
-				Dependency::system::win32::$MultiByteToWideChar(
-					Dependency::system::win32::$CP_UTF8,
-					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					unmake_pointer_unsafe<Dependency::system::win32::$CHAR>(source.begin()),
-					unmake_box<int>(source.size()),
-					unmake_pointer_unsafe<Dependency::system::win32::$WCHAR>(destination.begin()),
-					unmake_box<int>(destination.size())
-				)
-			);
-			assert_test(destination_size == destination.size());
+	inline auto to_narrow(
+		ConstantBasicStringView<Character> const & generic,
+		bool const &                               safe_null_terminated
+	) -> BasicString<CharacterN> {
+		if (safe_null_terminated) {
+			assert_test(is_safe_null_terminated_string(generic));
 		}
-		return destination;
+		auto wide = to_wide(generic, false);
+		auto narrow = BasicString<CharacterN>{};
+		if (!wide.empty()) {
+			auto size = Size{};
+			size = make_box<Size>(
+				Dependency::system::win32::$WideCharToMultiByte(
+					Dependency::system::win32::$CP_ACP,
+					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
+					unmake_pointer_unsafe<wchar_t>(wide.begin()),
+					unmake_box<int>(wide.size()),
+					nullptr,
+					0,
+					nullptr,
+					nullptr
+				)
+			);
+			assert_test(size != 0_sz);
+			narrow.allocate(size + 1_sz);
+			narrow.set_size(size);
+			size = make_box<Size>(
+				Dependency::system::win32::$WideCharToMultiByte(
+					Dependency::system::win32::$CP_ACP,
+					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
+					unmake_pointer_unsafe<wchar_t>(wide.begin()),
+					unmake_box<int>(wide.size()),
+					unmake_pointer_unsafe<char>(narrow.begin()),
+					unmake_box<int>(narrow.size()),
+					nullptr,
+					nullptr
+				)
+			);
+			assert_test(size == narrow.size());
+		}
+		return narrow;
 	}
 
-	inline auto wide_from_ansi(
-		ConstantBasicStringView<CharacterN> const & source
-	) -> BasicString<CharacterW> {
-		auto destination = BasicString<CharacterW>{};
-		if (!source.empty()) {
-			auto destination_size = Size{};
-			destination_size = make_box<Size>(
+	inline auto from_narrow(
+		ConstantBasicStringView<CharacterN> const & narrow
+	) -> BasicString<Character> {
+		auto wide = BasicString<CharacterW>{};
+		if (!narrow.empty()) {
+			auto size = Size{};
+			size = make_box<Size>(
 				Dependency::system::win32::$MultiByteToWideChar(
 					Dependency::system::win32::$CP_ACP,
 					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					unmake_pointer_unsafe<Dependency::system::win32::$CHAR>(source.begin()),
-					unmake_box<int>(source.size()),
+					unmake_pointer_unsafe<char>(narrow.begin()),
+					unmake_box<int>(narrow.size()),
 					nullptr,
 					0
 				)
 			);
-			assert_test(destination_size != 0_sz);
-			destination.allocate_full(destination_size);
-			destination_size = make_box<Size>(
+			assert_test(size != 0_sz);
+			wide.allocate(size);
+			wide.set_size(size);
+			size = make_box<Size>(
 				Dependency::system::win32::$MultiByteToWideChar(
 					Dependency::system::win32::$CP_ACP,
 					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					unmake_pointer_unsafe<Dependency::system::win32::$CHAR>(source.begin()),
-					unmake_box<int>(source.size()),
-					unmake_pointer_unsafe<Dependency::system::win32::$WCHAR>(destination.begin()),
-					unmake_box<int>(destination.size())
+					unmake_pointer_unsafe<char>(narrow.begin()),
+					unmake_box<int>(narrow.size()),
+					unmake_pointer_unsafe<wchar_t>(wide.begin()),
+					unmake_box<int>(wide.size())
 				)
 			);
-			assert_test(destination_size == destination.size());
+			assert_test(size == wide.size());
 		}
-		return destination;
+		return from_wide(wide);
+	}
+
+	// ----------------
+
+	inline auto to_native(
+		ConstantBasicStringView<Character> const & generic,
+		bool const &                               safe_null_terminated
+	) -> BasicString<CharacterW> {
+		return to_wide(generic, safe_null_terminated);
+	}
+
+	inline auto from_native(
+		ConstantBasicStringView<CharacterW> const & native
+	) -> BasicString<Character> {
+		return from_wide(native);
 	}
 
 	#endif
-
-	#pragma endregion
-
-	#pragma region posix
 
 	#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 
-	#endif
-
-	#pragma endregion
-
-	#pragma region universal
-
-	inline auto utf8_from_native(
-		ConstantBasicStringView<CharacterN> const & source
+	inline auto to_narrow(
+		ConstantBasicStringView<Character> const & generic,
+		bool const &                               safe_null_terminated
 	) -> BasicString<CharacterN> {
-		#if defined M_system_windows
-		return wide_to_utf8(wide_from_ansi(source));
-		#endif
-		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-		return BasicString<CharacterN>{source};
-		#endif
+		if (safe_null_terminated) {
+			assert_test(is_safe_null_terminated_string(generic));
+		}
+		auto narrow = BasicString<CharacterN>{};
+		narrow.allocate(generic.size() + 1_sz);
+		narrow.set_size(generic.size());
+		Range::assign_from(narrow, unsafe_cast<ConstantBasicStringView<CharacterN>>(generic));
+		return narrow;
 	}
+
+	inline auto from_narrow(
+		ConstantBasicStringView<CharacterN> const & narrow
+	) -> BasicString<Character> {
+		return BasicString<Character>{unsafe_cast<ConstantBasicStringView<Character>>(narrow)};
+	}
+
+	// ----------------
+
+	inline auto to_native(
+		ConstantBasicStringView<Character> const & generic,
+		bool const &                               safe_null_terminated
+	) -> BasicString<CharacterN> {
+		return to_narrow(generic, safe_null_terminated);
+	}
+
+	inline auto from_native(
+		ConstantBasicStringView<CharacterN> const & native
+	) -> BasicString<Character> {
+		return from_narrow(native);
+	}
+
+	#endif
 
 	#pragma endregion
 

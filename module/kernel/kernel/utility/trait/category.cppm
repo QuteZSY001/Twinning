@@ -100,7 +100,7 @@ export namespace Twinning::Kernel::Trait {
 	concept IsConstantReference =
 		CustomConstraint
 		&& (IsLeftReference<TIt ...>)
-		&& (!std::is_const_v<std::remove_reference_t<TIt>> && ...)
+		&& (std::is_const_v<std::remove_reference_t<TIt>> && ...)
 		;
 
 	template <typename ... TIt>

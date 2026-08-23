@@ -26,26 +26,39 @@ export namespace Twinning::Kernel::Tool::Data::Serialization::Xml {
 			switch (node.type().value) {
 				case Notation::Xml::NodeType::Constant::element().value: {
 					auto & node_value = node.get_element();
-					raw_node = raw_document.NewElement(M_use_ntsp_n_safe_of(node_value.name));
+					raw_node = raw_document.NewElement(
+						unmake_pointer_unsafe<char>(SystemNativeString::to_generic(node_value.name, true).begin())
+					);
 					auto raw_element = raw_node->ToElement();
 					for (auto & attribute : node_value.attribute) {
-						raw_element->SetAttribute(M_use_ntsp_n_safe_of(attribute.key), M_use_ntsp_n_safe_of(attribute.value));
+						raw_element->SetAttribute(
+							unmake_pointer_unsafe<char>(SystemNativeString::to_generic(attribute.key, true).begin()),
+							unmake_pointer_unsafe<char>(SystemNativeString::to_generic(attribute.value, true).begin())
+						);
 					}
 					for (auto & child : node_value.child) {
-						raw_element->InsertEndChild(convert_node(raw_document, child));
+						raw_element->InsertEndChild(
+							convert_node(raw_document, child)
+						);
 					}
 					break;
 				}
 				case Notation::Xml::NodeType::Constant::text().value: {
 					auto & node_value = node.get_text();
-					raw_node = raw_document.NewText(M_use_ntsp_n_safe_of(node_value.value));
+					raw_node = raw_document.NewText(
+						unmake_pointer_unsafe<char>(SystemNativeString::to_generic(node_value.value, true).begin())
+					);
 					auto raw_text = raw_node->ToText();
-					raw_text->SetCData(node_value.cdata.value);
+					raw_text->SetCData(
+						node_value.cdata.value
+					);
 					break;
 				}
 				case Notation::Xml::NodeType::Constant::comment().value: {
 					auto & node_value = node.get_comment();
-					raw_node = raw_document.NewComment(M_use_ntsp_n_safe_of(node_value.value));
+					raw_node = raw_document.NewComment(
+						unmake_pointer_unsafe<char>(SystemNativeString::to_generic(node_value.value, true).begin())
+					);
 					break;
 				}
 				default: throw UnreachableException{};

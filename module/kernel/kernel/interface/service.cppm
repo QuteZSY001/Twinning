@@ -12,11 +12,11 @@ export namespace Twinning::Kernel::Interface {
 
 	struct Service {
 
-		Executor * executor{nullptr};
+		ZPointer<Executor> executor{nullptr};
 
-		std::add_pointer_t<void ()> initialize{nullptr};
+		ZPointer<Void ()> initialize{nullptr};
 
-		std::add_pointer_t<void ()> finalize{nullptr};
+		ZPointer<Void ()> finalize{nullptr};
 
 	};
 

@@ -11,17 +11,17 @@ export namespace Twinning::Kernel::Interface {
 
 	struct Message {
 
-		std::add_pointer_t<std::uint8_t> data{nullptr};
+		ZPointer<ZByte> data{nullptr};
 
-		std::size_t size{0};
+		ZSize size{0};
 
 	};
 
 	struct Executor {
 
-		std::add_pointer_t<void (Executor * self, Executor * callback, Message * argument, Message * result, Message * exception)> invoke{nullptr};
+		ZPointer<Void (ZPointer<Executor> self, ZPointer<Executor> callback, ZPointer<Message> argument, ZPointer<Message> result, ZPointer<Message> exception)> invoke{nullptr};
 
-		std::add_pointer_t<void (Executor * self, Executor * callback, Message * argument, Message * result, Message * exception)> clear{nullptr};
+		ZPointer<Void (ZPointer<Executor> self, ZPointer<Executor> callback, ZPointer<Message> argument, ZPointer<Message> result, ZPointer<Message> exception)> clear{nullptr};
 
 	};
 

@@ -117,7 +117,7 @@ export namespace Twinning::Kernel::Executor {
 			try
 			#endif
 			{
-				thiz.m_callback.value(
+				thiz.m_callback.value.call(
 					Interface::ExecutorProxy{},
 					unsafe_cast<Interface::MessageProxy>(argument),
 					unsafe_cast<Interface::MessageProxy>(result)

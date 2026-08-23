@@ -67,6 +67,7 @@ export import twinning.kernel.utility.process.utility;
 export import twinning.kernel.utility.script.java_script.value_adapter;
 export import twinning.kernel.utility.script.java_script.value;
 export import twinning.kernel.utility.script.java_script.utility;
+export import twinning.kernel.utility.miscellaneous.function;
 export import twinning.kernel.utility.miscellaneous.finalizer;
 export import twinning.kernel.utility.miscellaneous.constant_block;
 export import twinning.kernel.utility.miscellaneous.string_block;

@@ -18,9 +18,9 @@ export namespace Twinning::Shell::Bridge {
 
 	struct Executor {
 
-		std::add_pointer_t<void (Executor * self, Executor * callback, Message * argument, Message * result, Message * exception)> invoke{nullptr};
+		std::add_pointer_t<void (std::add_pointer_t<Executor> self, std::add_pointer_t<Executor> callback, std::add_pointer_t<Message> argument, std::add_pointer_t<Message> result, std::add_pointer_t<Message> exception)> invoke{nullptr};
 
-		std::add_pointer_t<void (Executor * self, Executor * callback, Message * argument, Message * result, Message * exception)> clear{nullptr};
+		std::add_pointer_t<void (std::add_pointer_t<Executor> self, std::add_pointer_t<Executor> callback, std::add_pointer_t<Message> argument, std::add_pointer_t<Message> result, std::add_pointer_t<Message> exception)> clear{nullptr};
 
 	};
 

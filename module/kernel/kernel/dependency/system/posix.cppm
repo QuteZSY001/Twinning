@@ -85,8 +85,6 @@ export namespace Twinning::Kernel::Dependency::system::posix {
 
 	inline constexpr auto $STDERR_FILENO = STDERR_FILENO;
 
-	inline constexpr auto $WSTOPPED = WSTOPPED;
-
 	inline constexpr auto $WEXITED = WEXITED;
 
 	inline constexpr auto $P_PID = P_PID;

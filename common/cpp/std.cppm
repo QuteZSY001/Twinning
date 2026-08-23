@@ -26,6 +26,7 @@ module;
 #include <list>
 #include <bitset>
 #include <bit>
+#include <ranges>
 #include <memory>
 #include <cstring>
 #include <string>
@@ -168,6 +169,9 @@ export {
 		using ::std::list;
 		using ::std::unordered_map;
 		using ::std::bitset;
+	}
+	namespace std::ranges::views {
+		using std::ranges::views::reverse;
 	}
 	// memory
 	namespace std {

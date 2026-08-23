@@ -217,6 +217,15 @@ export namespace Twinning::Kernel {
 		return make_box<Size>(std::char_traits<typename AsPure<TElement>::Value>::length(unmake_pointer_unsafe<typename AsPure<TElement>::Value>(string)));
 	}
 
+	template <typename TSource> requires
+		CategoryConstraint<IsPureInstance<TSource>>
+		&& (IsConvertible<TSource, BasicStringView<typename TSource::Element, k_true> const &>)
+	inline auto is_safe_null_terminated_string(
+		TSource const & string
+	) -> Boolean {
+		return !Range::has(string, make_box<typename TSource::Element>('\0'));
+	}
+
 	#pragma endregion
 
 }

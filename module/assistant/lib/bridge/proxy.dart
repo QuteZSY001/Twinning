@@ -2,8 +2,10 @@ import '/common.dart';
 import '/utility/convert_helper.dart';
 import '/bridge/data.dart';
 import 'dart:convert' as lib;
+import 'dart:typed_data' as lib;
 import 'dart:ffi' as lib;
 import 'package:ffi/ffi.dart' as lib;
+import 'package:flutter/foundation.dart' as lib;
 
 // ----------------
 
@@ -16,9 +18,13 @@ class MessageProxy {
   // ----------------
 
   MessageProxy(
-    List<String>? value,
   ) :
-    this.value = value ?? [];
+    this.value = [];
+
+  MessageProxy.of(
+    List<String> value,
+  ) :
+    this.value = value;
 
   // #endregion
 
@@ -27,24 +33,34 @@ class MessageProxy {
   static MessageProxy parse(
     lib.Pointer<Message> instance,
   ) {
-    var proxy = MessageProxy(null);
-    var value = proxy.value;
+    assertTest(instance.ref.data != lib.nullptr && instance.ref.size != 0);
+    var proxy = MessageProxy();
     var dataPosition = 0;
-    var valueSize = (instance.ref.data + dataPosition).cast<lib.Uint32>().value;
-    dataPosition += lib.sizeOf<lib.Uint32>();
+    var nextInteger = () {
+      var dataSize = lib.sizeOf<lib.Size>();
+      assertTest(dataPosition <= dataPosition + dataSize && dataPosition + dataSize <= instance.ref.size);
+      var view = (instance.ref.data + dataPosition).asTypedList(dataSize);
+      var value = lib.ByteData.view(view.buffer).getUint64(0, .host);
+      dataPosition += dataSize;
+      return value;
+    };
+    var nextString = (Integer size) {
+      var dataSize = lib.sizeOf<lib.Uint8>() * size;
+      assertTest(dataPosition <= dataPosition + dataSize && dataPosition + dataSize <= instance.ref.size);
+      var view = (instance.ref.data + dataPosition).asTypedList(dataSize);
+      var value = lib.Uint8List.fromList(view);
+      dataPosition += dataSize;
+      return value;
+    };
+    var value = <lib.Uint8List>[];
+    var valueSize = nextInteger();
     for (var valueIndex = 0; valueIndex < valueSize; valueIndex++) {
-      var valueItemSize = (instance.ref.data + dataPosition).cast<lib.Uint32>().value;
-      dataPosition += lib.sizeOf<lib.Uint32>();
-      var valueItem = lib.utf8.decode((instance.ref.data + dataPosition).cast<lib.Uint8>().asTypedList(valueItemSize));
-      dataPosition += lib.sizeOf<lib.Uint8>() * valueItemSize;
+      var valueItemSize = nextInteger();
+      var valueItem = nextString(valueItemSize);
       value.add(valueItem);
-      var dataPadding = dataPosition % lib.sizeOf<lib.Uint32>();
-      if (dataPadding != 0) {
-        dataPadding = lib.sizeOf<lib.Uint32>() - dataPadding;
-      }
-      dataPosition += dataPadding;
     }
     assertTest(dataPosition == instance.ref.size);
+    proxy.value = value.map((it) => lib.utf8.decode(it)).toList();
     return proxy;
   }
 
@@ -52,36 +68,40 @@ class MessageProxy {
     lib.Pointer<Message> instance,
     MessageProxy         proxy,
   ) {
-    var value = proxy.value.map((value) => lib.utf8.encode(value)).toList();
+    assertTest(instance.ref.data == lib.nullptr && instance.ref.size == 0);
+    var dataPosition = 0;
+    var nextInteger = (Integer value) {
+      var dataSize = lib.sizeOf<lib.Size>();
+      assertTest(dataPosition <= dataPosition + dataSize && dataPosition + dataSize <= instance.ref.size);
+      var view = (instance.ref.data + dataPosition).asTypedList(dataSize);
+      lib.ByteData.view(view.buffer).setUint64(0, value, .host);
+      dataPosition += dataSize;
+      return null as Void;
+    };
+    var nextString = (lib.Uint8List value) {
+      var dataSize = lib.sizeOf<lib.Uint8>() * value.length;
+      assertTest(dataPosition <= dataPosition + dataSize && dataPosition + dataSize <= instance.ref.size);
+      var view = (instance.ref.data + dataPosition).asTypedList(dataSize);
+      view.setAll(0, value);
+      dataPosition += dataSize;
+      return null as Void;
+    };
+    var value = proxy.value.map((it) => lib.utf8.encode(it)).toList();
     var dataSize = 0;
-    dataSize += lib.sizeOf<lib.Uint32>();
+    dataSize += lib.sizeOf<lib.Size>();
     for (var valueItem in value) {
-      dataSize += lib.sizeOf<lib.Uint32>();
+      dataSize += lib.sizeOf<lib.Size>();
       dataSize += lib.sizeOf<lib.Uint8>() * valueItem.length;
-      var dataPadding = dataSize % lib.sizeOf<lib.Uint32>();
-      if (dataPadding != 0) {
-        dataPadding = lib.sizeOf<lib.Uint32>() - dataPadding;
-      }
-      dataSize += dataPadding;
     }
     instance.ref.data = lib.calloc.call<lib.Uint8>(dataSize);
     instance.ref.size = dataSize;
-    var dataPosition = 0;
     var valueSize = value.length;
-    (instance.ref.data + dataPosition).cast<lib.Uint32>().value = valueSize;
-    dataPosition += lib.sizeOf<lib.Uint32>();
+    nextInteger(valueSize);
     for (var valueIndex = 0; valueIndex < valueSize; valueIndex++) {
       var valueItem = value[valueIndex];
       var valueItemSize = valueItem.length;
-      (instance.ref.data + dataPosition).cast<lib.Uint32>().value = valueItemSize;
-      dataPosition += lib.sizeOf<lib.Uint32>();
-      (instance.ref.data + dataPosition).cast<lib.Uint8>().asTypedList(valueItemSize).setAll(0, valueItem);
-      dataPosition += lib.sizeOf<lib.Uint8>() * valueItemSize;
-      var dataPadding = dataPosition % lib.sizeOf<lib.Uint32>();
-      if (dataPadding != 0) {
-        dataPadding = lib.sizeOf<lib.Uint32>() - dataPadding;
-      }
-      dataPosition += dataPadding;
+      nextInteger(valueItemSize);
+      nextString(valueItem);
     }
     assertTest(dataPosition == instance.ref.size);
     return;
@@ -90,6 +110,7 @@ class MessageProxy {
   static Void destruct(
     lib.Pointer<Message> instance,
   ) {
+    assertTest(instance.ref.data != lib.nullptr && instance.ref.size != 0);
     lib.calloc.free(instance.ref.data);
     instance.ref.data = lib.nullptr;
     instance.ref.size = 0;
@@ -109,9 +130,13 @@ class ExecutorProxy {
   // ----------------
 
   ExecutorProxy(
-    Void Function(ExecutorProxy callback, MessageProxy argument, MessageProxy result)? value,
   ) :
-    this.value = value ?? ((_, _, _) => throw UnimplementedException());
+    this.value = ((_, _, _) => throw UnimplementedException());
+
+  ExecutorProxy.of(
+    Void Function(ExecutorProxy callback, MessageProxy argument, MessageProxy result) value,
+  ) :
+    this.value = value;
 
   // #endregion
 
@@ -124,38 +149,45 @@ class ExecutorProxy {
   static ExecutorProxy parse(
     lib.Pointer<Executor> instance,
   ) {
-    var proxy = ExecutorProxy(null);
+    assertTest(instance.ref.invoke != lib.nullptr && instance.ref.clear != lib.nullptr);
+    var proxy = ExecutorProxy();
     proxy.value = (callbackProxy, argumentProxy, resultProxy) {
-      var exceptionProxy = MessageProxy(null);
+      var exceptionProxy = MessageProxy();
       var callback = lib.Pointer<Executor>.fromAddress(0);
       var argument = lib.Pointer<Message>.fromAddress(0);
       var result = lib.Pointer<Message>.fromAddress(0);
       var exception = lib.Pointer<Message>.fromAddress(0);
-      {
+      var finalizer = <Void Function()>[];
+      try {
         callback = lib.calloc.call<Executor>();
         argument = lib.calloc.call<Message>();
         result = lib.calloc.call<Message>();
         exception = lib.calloc.call<Message>();
-      }
-      {
+        finalizer.add(() {
+          lib.calloc.free(callback);
+          lib.calloc.free(argument);
+          lib.calloc.free(result);
+          lib.calloc.free(exception);
+        });
         ExecutorProxy.construct(callback, callbackProxy);
+        finalizer.add(() {
+          ExecutorProxy.destruct(callback);
+        });
         MessageProxy.construct(argument, argumentProxy);
-      }
-      {
+        finalizer.add(() {
+          MessageProxy.destruct(argument);
+        });
         instance.ref.invoke.asFunction<Void Function(lib.Pointer<Executor> self, lib.Pointer<Executor> callback, lib.Pointer<Message> argument, lib.Pointer<Message> result, lib.Pointer<Message> exception)>()(instance, callback, argument, result, exception);
+        finalizer.add(() {
+          instance.ref.clear.asFunction<Void Function(lib.Pointer<Executor> self, lib.Pointer<Executor> callback, lib.Pointer<Message> argument, lib.Pointer<Message> result, lib.Pointer<Message> exception)>()(instance, callback, argument, result, exception);
+        });
         resultProxy.value = MessageProxy.parse(result).value;
         exceptionProxy.value = MessageProxy.parse(exception).value;
-        instance.ref.clear.asFunction<Void Function(lib.Pointer<Executor> self, lib.Pointer<Executor> callback, lib.Pointer<Message> argument, lib.Pointer<Message> result, lib.Pointer<Message> exception)>()(instance, callback, argument, result, exception);
       }
-      {
-        ExecutorProxy.destruct(callback);
-        MessageProxy.destruct(argument);
-      }
-      {
-        lib.calloc.free(callback);
-        lib.calloc.free(argument);
-        lib.calloc.free(result);
-        lib.calloc.free(exception);
+      finally {
+        for (var finalizerItem in finalizer.reversed) {
+          finalizerItem();
+        }
       }
       if (!exceptionProxy.value.isEmpty) {
         throw exceptionProxy.value.first;
@@ -169,6 +201,7 @@ class ExecutorProxy {
     lib.Pointer<Executor> instance,
     ExecutorProxy         proxy,
   ) {
+    assertTest(instance.ref.invoke == lib.nullptr && instance.ref.clear == lib.nullptr);
     assertTest(!ExecutorProxy._guard.containsKey(instance));
     var guardForInvoke = lib.NativeCallable<lib.Void Function(lib.Pointer<Executor> self, lib.Pointer<Executor> callback, lib.Pointer<Message> argument, lib.Pointer<Message> result, lib.Pointer<Message> exception)>.isolateLocal((
       lib.Pointer<Executor> self,
@@ -180,14 +213,14 @@ class ExecutorProxy {
       try {
         var callbackProxy = ExecutorProxy.parse(callback);
         var argumentProxy = MessageProxy.parse(argument);
-        var resultProxy = MessageProxy(null);
+        var resultProxy = MessageProxy();
         proxy.value(callbackProxy, argumentProxy, resultProxy);
         MessageProxy.construct(result, resultProxy);
-        MessageProxy.construct(exception, .new([]));
+        MessageProxy.construct(exception, .new());
       }
       catch (e, s) {
-        MessageProxy.construct(exception, .new([ConvertHelper.generateExceptionMessage(e, s).join('\n')]));
-        MessageProxy.construct(result, .new([]));
+        MessageProxy.construct(exception, .of([ConvertHelper.generateExceptionMessage(e, s).join('\n')]));
+        MessageProxy.construct(result, .new());
       }
       return null as Void;
     });
@@ -215,6 +248,8 @@ class ExecutorProxy {
   static Void destruct(
     lib.Pointer<Executor> instance,
   ) {
+    assertTest(instance.ref.invoke != lib.nullptr && instance.ref.clear != lib.nullptr);
+    assertTest(ExecutorProxy._guard.containsKey(instance));
     var guard = ExecutorProxy._guard[instance]!;
     guard.invoke.close();
     guard.clear.close();

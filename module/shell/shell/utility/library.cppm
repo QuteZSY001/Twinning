@@ -73,12 +73,15 @@ export namespace Twinning::Shell {
 		) -> void {
 			assert_test(!thiz.state());
 			#if defined M_system_windows
-			auto path_absolute = std::string{path} + ".";
-			auto path_absolute_w = SystemNativeString::wide_from_utf8(path_absolute);
-			thiz.m_handle = static_cast<void *>(Dependency::system::win32::$LoadLibraryW(path_absolute_w.data()));
+			thiz.m_handle = static_cast<void *>(Dependency::system::win32::$LoadLibraryW(
+				SystemNativeString::to_native(std::string{path} + ".", true).data()
+			));
 			#endif
 			#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-			thiz.m_handle = Dependency::system::posix::$dlopen(path.data(), Dependency::system::posix::$RTLD_LAZY | Dependency::system::posix::$RTLD_LOCAL);
+			thiz.m_handle = Dependency::system::posix::$dlopen(
+				SystemNativeString::to_native(path, true).data(),
+				Dependency::system::posix::$RTLD_LAZY | Dependency::system::posix::$RTLD_LOCAL
+			);
 			#endif
 			if (thiz.m_handle == nullptr) {
 				throw std::runtime_error{std::format("Exception: could not open library '{}'", path)};
@@ -91,10 +94,14 @@ export namespace Twinning::Shell {
 			assert_test(thiz.state());
 			auto state = bool{};
 			#if defined M_system_windows
-			state = Dependency::system::win32::$FreeLibrary(static_cast<Dependency::system::win32::$HMODULE>(thiz.m_handle)) != Dependency::system::win32::$FALSE;
+			state = Dependency::system::win32::$FreeLibrary(
+				static_cast<Dependency::system::win32::$HMODULE>(thiz.m_handle)
+			) != Dependency::system::win32::$FALSE;
 			#endif
 			#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-			state = Dependency::system::posix::$dlclose(thiz.m_handle) == 0;
+			state = Dependency::system::posix::$dlclose(
+				thiz.m_handle
+			) == 0;
 			#endif
 			if (state == false) {
 				throw std::runtime_error{std::format("Exception: could not close library")};
@@ -112,10 +119,16 @@ export namespace Twinning::Shell {
 			assert_test(thiz.state());
 			auto address = std::add_pointer_t<void>{};
 			#if defined M_system_windows
-			address = reinterpret_cast<void *>(Dependency::system::win32::$GetProcAddress(static_cast<Dependency::system::win32::$HMODULE>(thiz.m_handle), name.data()));
+			address = reinterpret_cast<void *>(Dependency::system::win32::$GetProcAddress(
+				static_cast<Dependency::system::win32::$HMODULE>(thiz.m_handle),
+				SystemNativeString::to_generic(name, true).data()
+			));
 			#endif
 			#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-			address = Dependency::system::posix::$dlsym(thiz.m_handle, name.data());
+			address = Dependency::system::posix::$dlsym(
+				thiz.m_handle,
+				SystemNativeString::to_generic(name, true).data()
+			);
 			#endif
 			if (address == nullptr) {
 				throw std::runtime_error{std::format("Exception: could not lookup symbol '{}'", name)};

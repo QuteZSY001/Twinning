@@ -9,142 +9,236 @@ import twinning.kernel.dependency.system.posix;
 
 export namespace Twinning::Kernel::LowLevel::SystemNativeString {
 
-	#pragma region windows
+	#pragma region generic
+
+	inline auto to_generic(
+		std::string_view const & generic,
+		bool const &             safe_null_terminated
+	) -> std::string {
+		if (safe_null_terminated) {
+			assert_test(!generic.contains('\0'));
+		}
+		return std::string{generic};
+	}
+
+	inline auto from_generic(
+		std::string_view const & generic
+	) -> std::string {
+		return std::string{generic};
+	}
+
+	#pragma endregion
+
+	#pragma region native
 
 	#if defined M_system_windows
 
-	inline auto wide_to_utf8(
-		std::wstring_view const & source
+	inline auto to_wide(
+		std::string_view const & generic,
+		bool const &             safe_null_terminated
+	) -> std::wstring {
+		if (safe_null_terminated) {
+			assert_test(!generic.contains('\0'));
+		}
+		auto wide = std::wstring{};
+		if (!generic.empty()) {
+			auto size = std::size_t{};
+			size = static_cast<std::size_t>(
+				Dependency::system::win32::$MultiByteToWideChar(
+					Dependency::system::win32::$CP_UTF8,
+					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
+					generic.data(),
+					static_cast<int>(generic.size()),
+					nullptr,
+					0
+				)
+			);
+			assert_test(size != 0);
+			wide.reserve(size + 1);
+			wide.resize(size);
+			size = static_cast<std::size_t>(
+				Dependency::system::win32::$MultiByteToWideChar(
+					Dependency::system::win32::$CP_UTF8,
+					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
+					generic.data(),
+					static_cast<int>(generic.size()),
+					wide.data(),
+					static_cast<int>(wide.size())
+				)
+			);
+			assert_test(size == wide.size());
+		}
+		return wide;
+	}
+
+	inline auto from_wide(
+		std::wstring_view const & wide
 	) -> std::string {
-		auto destination = std::string{};
-		if (!source.empty()) {
-			auto destination_size = std::size_t{};
-			destination_size = static_cast<std::size_t>(
+		auto generic = std::string{};
+		if (!wide.empty()) {
+			auto size = std::size_t{};
+			size = static_cast<std::size_t>(
 				Dependency::system::win32::$WideCharToMultiByte(
 					Dependency::system::win32::$CP_UTF8,
 					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
-					source.data(),
-					static_cast<int>(source.size()),
+					wide.data(),
+					static_cast<int>(wide.size()),
 					nullptr,
 					0,
 					nullptr,
 					nullptr
 				)
 			);
-			assert_test(destination_size != 0);
-			destination.reserve(destination_size + 1);
-			destination.resize(destination_size);
-			destination_size = static_cast<std::size_t>(
+			assert_test(size != 0);
+			generic.reserve(size + 1);
+			generic.resize(size);
+			size = static_cast<std::size_t>(
 				Dependency::system::win32::$WideCharToMultiByte(
 					Dependency::system::win32::$CP_UTF8,
 					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
-					source.data(),
-					static_cast<int>(source.size()),
-					destination.data(),
-					static_cast<int>(destination.size()),
+					wide.data(),
+					static_cast<int>(wide.size()),
+					generic.data(),
+					static_cast<int>(generic.size()),
 					nullptr,
 					nullptr
 				)
 			);
-			assert_test(destination_size == destination.size());
+			assert_test(size == generic.size());
 		}
-		return destination;
+		return generic;
 	}
 
 	// ----------------
 
-	inline auto wide_from_utf8(
-		std::string_view const & source
-	) -> std::wstring {
-		auto destination = std::wstring{};
-		if (!source.empty()) {
-			auto destination_size = std::size_t{};
-			destination_size = static_cast<std::size_t>(
-				Dependency::system::win32::$MultiByteToWideChar(
-					Dependency::system::win32::$CP_UTF8,
-					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					source.data(),
-					static_cast<int>(source.size()),
-					nullptr,
-					0
-				)
-			);
-			assert_test(destination_size != 0);
-			destination.reserve(destination_size + 1);
-			destination.resize(destination_size);
-			destination_size = static_cast<std::size_t>(
-				Dependency::system::win32::$MultiByteToWideChar(
-					Dependency::system::win32::$CP_UTF8,
-					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					source.data(),
-					static_cast<int>(source.size()),
-					destination.data(),
-					static_cast<int>(destination.size())
-				)
-			);
-			assert_test(destination_size == destination.size());
+	inline auto to_narrow(
+		std::string_view const & generic,
+		bool const &             safe_null_terminated
+	) -> std::string {
+		if (safe_null_terminated) {
+			assert_test(!generic.contains('\0'));
 		}
-		return destination;
+		auto wide = to_wide(generic, false);
+		auto narrow = std::string{};
+		if (!wide.empty()) {
+			auto size = std::size_t{};
+			size = static_cast<std::size_t>(
+				Dependency::system::win32::$WideCharToMultiByte(
+					Dependency::system::win32::$CP_ACP,
+					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
+					wide.data(),
+					static_cast<int>(wide.size()),
+					nullptr,
+					0,
+					nullptr,
+					nullptr
+				)
+			);
+			assert_test(size != 0);
+			narrow.reserve(size + 1);
+			narrow.resize(size);
+			size = static_cast<std::size_t>(
+				Dependency::system::win32::$WideCharToMultiByte(
+					Dependency::system::win32::$CP_ACP,
+					Dependency::system::win32::$WC_ERR_INVALID_CHARS,
+					wide.data(),
+					static_cast<int>(wide.size()),
+					narrow.data(),
+					static_cast<int>(narrow.size()),
+					nullptr,
+					nullptr
+				)
+			);
+			assert_test(size == narrow.size());
+		}
+		return narrow;
 	}
 
-	inline auto wide_from_ansi(
-		std::string_view const & source
-	) -> std::wstring {
-		auto destination = std::wstring{};
-		if (!source.empty()) {
-			auto destination_size = std::size_t{};
-			destination_size = static_cast<std::size_t>(
+	inline auto from_narrow(
+		std::string_view const & narrow
+	) -> std::string {
+		auto wide = std::wstring{};
+		if (!narrow.empty()) {
+			auto size = std::size_t{};
+			size = static_cast<std::size_t>(
 				Dependency::system::win32::$MultiByteToWideChar(
 					Dependency::system::win32::$CP_ACP,
 					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					source.data(),
-					static_cast<int>(source.size()),
+					narrow.data(),
+					static_cast<int>(narrow.size()),
 					nullptr,
 					0
 				)
 			);
-			assert_test(destination_size != 0);
-			destination.reserve(destination_size + 1);
-			destination.resize(destination_size);
-			destination_size = static_cast<std::size_t>(
+			assert_test(size != 0);
+			wide.reserve(size + 1);
+			wide.resize(size);
+			size = static_cast<std::size_t>(
 				Dependency::system::win32::$MultiByteToWideChar(
 					Dependency::system::win32::$CP_ACP,
 					Dependency::system::win32::$MB_ERR_INVALID_CHARS,
-					source.data(),
-					static_cast<int>(source.size()),
-					destination.data(),
-					static_cast<int>(destination.size())
+					narrow.data(),
+					static_cast<int>(narrow.size()),
+					wide.data(),
+					static_cast<int>(wide.size())
 				)
 			);
-			assert_test(destination_size == destination.size());
+			assert_test(size == wide.size());
 		}
-		return destination;
+		return from_wide(wide);
+	}
+
+	// ----------------
+
+	inline auto to_native(
+		std::string_view const & generic,
+		bool const &             safe_null_terminated
+	) -> std::wstring {
+		return to_wide(generic, safe_null_terminated);
+	}
+
+	inline auto from_native(
+		std::wstring_view const & native
+	) -> std::string {
+		return from_wide(native);
 	}
 
 	#endif
-
-	#pragma endregion
-
-	#pragma region posix
 
 	#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
 
-	#endif
-
-	#pragma endregion
-
-	#pragma region universal
-
-	inline auto utf8_from_native(
-		std::string_view const & source
+	inline auto to_narrow(
+		std::string_view const & generic,
+		bool const &             safe_null_terminated
 	) -> std::string {
-		#if defined M_system_windows
-		return wide_to_utf8(wide_from_ansi(source));
-		#endif
-		#if defined M_system_linux || defined M_system_macintosh || defined M_system_android || defined M_system_iphone
-		return std::string{source};
-		#endif
+		if (safe_null_terminated) {
+			assert_test(!generic.contains('\0'));
+		}
+		return std::string{generic};
 	}
+
+	inline auto from_narrow(
+		std::string_view const & narrow
+	) -> std::string {
+		return std::string{narrow};
+	}
+
+	// ----------------
+
+	inline auto to_native(
+		std::string_view const & generic,
+		bool const &             safe_null_terminated
+	) -> std::string {
+		return to_narrow(generic, safe_null_terminated);
+	}
+
+	inline auto from_native(
+		std::string_view const & native
+	) -> std::string {
+		return from_narrow(native);
+	}
+
+	#endif
 
 	#pragma endregion
 
