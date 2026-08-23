@@ -22,7 +22,7 @@ export namespace Twinning::Kernel::Trait {
 			CategoryConstraint<>
 			&& (IsSameOf<t_index, ZSize>)
 			&& (t_index < size)
-		using Element = TElement...[t_index];
+		using Element = AsSelect<t_index, TElement ...>;
 
 		template <typename TValue> requires
 			CategoryConstraint<>
